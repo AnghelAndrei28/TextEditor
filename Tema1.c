@@ -1,7 +1,5 @@
 #include <stdio.h>
-
 #include <stdlib.h>
-
 #include <string.h>
 
 struct cursor {
@@ -71,6 +69,7 @@ Node * list_remove(Node * head, Node * del) {
     del -> prev -> next = del -> next;
   }
 
+  free(del -> data);
   free(del);
 
   return head;
@@ -154,6 +153,29 @@ int main() {
         printf("Undo\n");
       } else if (strcmp(buffer, "s\n") == 0) {
         saved_head = save_command(head, saved_head);
+      } else if (strncmp(buffer, "dl", 2) == 0) {
+        if (buffer[2] == '\n') {
+          Node * tmp = head;
+          for (int i = 1; i < Cursor.linie; i++) {
+            tmp = tmp -> next;
+          }
+          head = list_remove(head, tmp);
+        } else {
+          Node * tmp = head;
+          int x = atoi(buffer + 3);
+          Cursor.linie = x;
+          Cursor.pozitie = 0;
+          for (int i = 1; i < Cursor.linie; i++) {
+            tmp = tmp -> next;
+          }
+          head = list_remove(head, tmp);
+        }
+      } else if (strncmp(buffer, "gc", 2) == 0) {
+
+      } else if (strncmp(buffer, "gl", 2) == 0) {
+        int x = atoi(buffer + 3);
+        Cursor.linie = x;
+        Cursor.pozitie = 0;
       } else {
         //printf("Unhandled case\n");
       }
