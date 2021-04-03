@@ -122,6 +122,45 @@ Node * save_command(Node * head, Node * saved_head) {
   return saved_head;
 }
 
+Node* delete_command(Node* head, int nr_characters) {
+
+  Node* tmp = head;
+
+  for(int i = 1; i < Cursor.linie; i++) {
+    tmp = tmp->next;
+  }
+
+  char* string = (char*)calloc(strlen(tmp->data) - nr_characters + 1, sizeof(char));
+  printf("%s\n", tmp->data);
+  strncpy(string, tmp->data, Cursor.pozitie);
+  strcat(string, tmp->data + (Cursor.pozitie + nr_characters));
+  tmp->data = (char*)realloc(tmp->data, (strlen(string) + 1)*sizeof(char));
+  strcpy(tmp->data, string);
+
+  free(string);
+  return head;
+}
+
+Node* backspace_command(Node* head) {
+  Node* tmp = head;
+
+  for(int i = 1; i < Cursor.linie; i++) {
+    tmp = tmp->next;
+  }
+
+  char* string = (char*)calloc(strlen(tmp->data) + 1, sizeof(char));
+  strncpy(string, tmp->data, Cursor.pozitie - 1);
+  strcat(string, tmp->data + (Cursor.pozitie));
+  tmp->data = (char*)realloc(tmp->data, (strlen(string)+1)*sizeof(char));
+  strcpy(tmp->data, string);
+
+  free(string);
+
+  Cursor.pozitie--;
+
+  return head;
+}
+
 int main() {
 
   FILE * entryFile;
@@ -171,12 +210,29 @@ int main() {
           head = list_remove(head, tmp);
         }
       } else if (strncmp(buffer, "gc", 2) == 0) {
-
+          strtok(buffer, " ");
+          Cursor.pozitie = atoi(strtok(NULL, " "));
+          char* x = strtok(NULL, " ");
+          if(x != NULL) {
+            Cursor.linie = atoi(x);
+          }
       } else if (strncmp(buffer, "gl", 2) == 0) {
         int x = atoi(buffer + 3);
         Cursor.linie = x;
         Cursor.pozitie = 0;
-      } else {
+      } 
+      else if (strcmp(strtok(buffer, " "), "d") == 0 || strcmp(buffer, "d\n") == 0) {
+        if(strcmp(buffer, "d\n") == 0) {
+          head = delete_command(head, 1);
+        }
+        else {
+          head = delete_command(head, atoi(strtok(NULL, " ")));
+        }
+      }
+      else if(strcmp(buffer, "b\n") == 0) {
+        head = backspace_command(head);
+      }
+      else {
         //printf("Unhandled case\n");
       }
     } else if (!command_enabled) {
