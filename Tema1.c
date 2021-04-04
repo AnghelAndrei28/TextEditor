@@ -90,9 +90,11 @@ void quit_command(FILE * outputFile, Node * head) {
   if (head == NULL) {
     return;
   } else if (head -> next == NULL) {
+    printf("%s", head->data);
     fprintf(outputFile, "%s", head -> data);
     return;
   } else {
+    printf("%s", head->data);
     fprintf(outputFile, "%s", head -> data);
     quit_command(outputFile, head -> next);
   }
@@ -122,37 +124,36 @@ Node * save_command(Node * head, Node * saved_head) {
   return saved_head;
 }
 
-Node* delete_command(Node* head, int nr_characters) {
+Node * delete_command(Node * head, int nr_characters) {
 
-  Node* tmp = head;
-
-  for(int i = 1; i < Cursor.linie; i++) {
-    tmp = tmp->next;
+  Node * tmp = head;
+  int i;
+  for (i = 1; i < Cursor.linie; i++) {
+    tmp = tmp -> next;
   }
 
-  char* string = (char*)calloc(strlen(tmp->data) - nr_characters + 1, sizeof(char));
-  printf("%s\n", tmp->data);
-  strncpy(string, tmp->data, Cursor.pozitie);
-  strcat(string, tmp->data + (Cursor.pozitie + nr_characters));
-  tmp->data = (char*)realloc(tmp->data, (strlen(string) + 1)*sizeof(char));
-  strcpy(tmp->data, string);
+  char * string = (char * ) calloc(strlen(tmp -> data) - nr_characters + 1, sizeof(char));
+  strncpy(string, tmp -> data, Cursor.pozitie);
+  strcat(string, tmp -> data + (Cursor.pozitie + nr_characters));
+  tmp -> data = (char * ) realloc(tmp -> data, (strlen(string) + 1) * sizeof(char));
+  strcpy(tmp -> data, string);
 
   free(string);
   return head;
 }
 
-Node* backspace_command(Node* head) {
-  Node* tmp = head;
-
-  for(int i = 1; i < Cursor.linie; i++) {
-    tmp = tmp->next;
+Node * backspace_command(Node * head) {
+  Node * tmp = head;
+  int i;
+  for (i = 1; i < Cursor.linie; i++) {
+    tmp = tmp -> next;
   }
 
-  char* string = (char*)calloc(strlen(tmp->data) + 1, sizeof(char));
-  strncpy(string, tmp->data, Cursor.pozitie - 1);
-  strcat(string, tmp->data + (Cursor.pozitie));
-  tmp->data = (char*)realloc(tmp->data, (strlen(string)+1)*sizeof(char));
-  strcpy(tmp->data, string);
+  char * string = (char * ) calloc(strlen(tmp -> data) + 1, sizeof(char));
+  strncpy(string, tmp -> data, Cursor.pozitie - 1);
+  strcat(string, tmp -> data + (Cursor.pozitie));
+  tmp -> data = (char * ) realloc(tmp -> data, (strlen(string) + 1) * sizeof(char));
+  strcpy(tmp -> data, string);
 
   free(string);
 
@@ -161,15 +162,54 @@ Node* backspace_command(Node* head) {
   return head;
 }
 
+Node * delete_line(Node * head, char * buffer) {
+  int i;
+  if (buffer[2] == '\n') {
+    Node * tmp = head;
+    for (i = 1; i < Cursor.linie; i++) {
+      tmp = tmp -> next;
+    }
+    head = list_remove(head, tmp);
+  } else {
+    Node * tmp = head;
+    int x = atoi(buffer + 3);
+    Cursor.linie = x;
+    Cursor.pozitie = 0;
+    for (i = 1; i < Cursor.linie; i++) {
+      tmp = tmp -> next;
+    }
+    head = list_remove(head, tmp);
+  }
+  return head;
+}
+
+void go_to_char(Node * head, char * buffer) {
+  strtok(buffer, " ");
+  Cursor.pozitie = atoi(strtok(NULL, " "));
+  char * x = strtok(NULL, " ");
+  if (x != NULL) {
+    Cursor.linie = atoi(x);
+  }
+}
+
+void go_to_line(Node * head, char * buffer) {
+  int x = atoi(buffer + 3);
+  Cursor.linie = x;
+  Cursor.pozitie = 0;
+}
+
+#define BUF_MAX 100
+
 int main() {
 
   FILE * entryFile;
   FILE * outputFile;
 
   int command_enabled = 0;
-  char * buffer = (char * ) calloc(100, sizeof(char));
+  char * buffer = (char * ) calloc(BUF_MAX, sizeof(char));
 
-  Cursor.linie = Cursor.pozitie = 0;
+  Cursor.linie = 1;
+  Cursor.pozitie = 0;
 
   entryFile = fopen("editor.in", "r");
   if (entryFile == NULL)
@@ -177,10 +217,10 @@ int main() {
   outputFile = fopen("editor.out", "w");
   if (outputFile == NULL)
     printf("Nu s-a putut deschide fisierul output");
-  fgets(buffer, sizeof(buffer) + 2, entryFile);
+  fgets(buffer, BUF_MAX + 2, entryFile);
   Node * head = init_node(buffer);
   Node * saved_head = init_node(buffer);
-  while (fgets(buffer, sizeof(buffer) + 2, entryFile) != NULL) {
+  while (fgets(buffer, BUF_MAX + 2, entryFile) != NULL) {
     if (command_enabled) {
       if (strcmp(buffer, "::i\n") == 0 || strcmp(buffer, "::i \n") == 0) {
         command_enabled = 0;
@@ -193,46 +233,20 @@ int main() {
       } else if (strcmp(buffer, "s\n") == 0) {
         saved_head = save_command(head, saved_head);
       } else if (strncmp(buffer, "dl", 2) == 0) {
-        if (buffer[2] == '\n') {
-          Node * tmp = head;
-          for (int i = 1; i < Cursor.linie; i++) {
-            tmp = tmp -> next;
-          }
-          head = list_remove(head, tmp);
-        } else {
-          Node * tmp = head;
-          int x = atoi(buffer + 3);
-          Cursor.linie = x;
-          Cursor.pozitie = 0;
-          for (int i = 1; i < Cursor.linie; i++) {
-            tmp = tmp -> next;
-          }
-          head = list_remove(head, tmp);
-        }
+        head = delete_line(head, buffer);
       } else if (strncmp(buffer, "gc", 2) == 0) {
-          strtok(buffer, " ");
-          Cursor.pozitie = atoi(strtok(NULL, " "));
-          char* x = strtok(NULL, " ");
-          if(x != NULL) {
-            Cursor.linie = atoi(x);
-          }
+        go_to_char(head, buffer);
       } else if (strncmp(buffer, "gl", 2) == 0) {
-        int x = atoi(buffer + 3);
-        Cursor.linie = x;
-        Cursor.pozitie = 0;
-      } 
-      else if (strcmp(strtok(buffer, " "), "d") == 0 || strcmp(buffer, "d\n") == 0) {
-        if(strcmp(buffer, "d\n") == 0) {
+        go_to_line(head, buffer);
+      } else if (strcmp(strtok(buffer, " "), "d") == 0 || strcmp(buffer, "d\n") == 0) {
+        if (strcmp(buffer, "d\n") == 0) {
           head = delete_command(head, 1);
-        }
-        else {
+        } else {
           head = delete_command(head, atoi(strtok(NULL, " ")));
         }
-      }
-      else if(strcmp(buffer, "b\n") == 0) {
+      } else if (strcmp(buffer, "b\n") == 0) {
         head = backspace_command(head);
-      }
-      else {
+      } else {
         //printf("Unhandled case\n");
       }
     } else if (!command_enabled) {
@@ -240,6 +254,7 @@ int main() {
         command_enabled = 1;
       } else {
         head = list_append(head, buffer);
+
       }
     }
   }
