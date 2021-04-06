@@ -1,8 +1,8 @@
 #include "stack.h"
 
 SNode *init_snode(char* comanda) {
-	SNode *node = (SNode *)malloc(sizeof(SNode));
-    node->comanda = (char* )malloc(100 * sizeof(char));
+	SNode *node = (SNode *)calloc(1, sizeof(SNode));
+    node->comanda = (char* )calloc((strlen(comanda) + 1), sizeof(char));
 	strcpy(node->comanda, comanda);
 	node->next = NULL;
 
@@ -60,4 +60,12 @@ void delete_stack(SNode ** head) {
     free(current -> comanda);
     free(current);
   }
+}
+
+void print_stack(SNode * head) {
+	while (head)
+	{
+		printf("%s\n", head->comanda);
+		head = head->next;
+	}
 }

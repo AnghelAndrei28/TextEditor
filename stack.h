@@ -8,14 +8,14 @@
 typedef struct SNode {
     char* comanda;
     struct SNode *next;
-    struct SNode *prev;
 } SNode;
 
-SNode *init_node(char*);
+SNode *init_snode(char*);
 SNode* push(SNode*, char*); 
 SNode* pop(SNode*);
 char* top(SNode*);
 int is_empty(SNode*);
 void delete_stack(SNode **);
+void print_stack(SNode *);
 
 #endif
