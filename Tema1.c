@@ -11,8 +11,8 @@ struct cursor {
 }
 Cursor;
 
-SNode* undo_stack = NULL;
-SNode* redo_stack = NULL;
+SNode * undo_stack = NULL;
+SNode * redo_stack = NULL;
 
 typedef struct node {
   char * data;
@@ -47,21 +47,17 @@ Node * list_append(Node * head, char * data) {
   return head;
 }
 
-Node* list_prepend(Node* head, char* data)
-{
-    Node* new_node = init_node(data);
+Node * list_prepend(Node * head, char * data) {
+  Node * new_node = init_node(data);
 
-    if (head == NULL)
-    {
-        return new_node;
-    }
-    else
-    {
-        head->prev = new_node;
-        new_node->next = head;
-    }
-
+  if (head == NULL) {
     return new_node;
+  } else {
+    head -> prev = new_node;
+    new_node -> next = head;
+  }
+
+  return new_node;
 }
 
 void list_print_forward(Node * head) {
@@ -80,16 +76,13 @@ Node * list_remove(Node * head, Node * del) {
   if (head == NULL || del == NULL)
     return NULL;
 
-  if (head == del) {
+  else if (head == del) {
     head = del -> next;
-  }
-
-  if (del -> next != NULL) {
-    del -> next -> prev = del -> prev;
-  }
-
-  if (del -> prev != NULL) {
+  } else if (del -> next == NULL) {
+    del -> prev -> next = NULL;
+  } else {
     del -> prev -> next = del -> next;
+    del -> next -> prev = del -> prev;
   }
 
   free(del -> data);
@@ -98,31 +91,29 @@ Node * list_remove(Node * head, Node * del) {
   return head;
 }
 
-Node* introduce_nod(Node* head, int nr_nod, char* data) {
+Node * introduce_nod(Node * head, int nr_nod, char * data) {
   Node * new_node = init_node(data);
   if (head == NULL)
     return new_node;
   else {
-    Node* tmp = head;
+    Node * tmp = head;
     int i = 1;
-    while (i < nr_nod - 1 && tmp != NULL)
-    {
-      tmp = tmp->next;
+    while (i < nr_nod - 1 && tmp != NULL) {
+      tmp = tmp -> next;
       i++;
     }
-    if(nr_nod == 1) {
+    if (nr_nod == 1) {
       head = list_prepend(head, data);
       return head;
-    } else if(tmp->next == NULL) {
-      head = list_append(head, data);
+    } else if (tmp -> next == NULL) {
+      tmp -> next = new_node;
+      new_node -> prev = tmp;
       return head;
-    } else if(tmp != NULL) {
-      new_node->next = tmp->next;
-      new_node->prev = tmp;
-      if(tmp->next != NULL) {
-        tmp->next->prev = new_node;
-      }
-      tmp->next = new_node;
+    } else {
+      new_node -> next = tmp -> next;
+      new_node -> prev = tmp;
+      tmp -> next -> prev = new_node;
+      tmp -> next = new_node;
       return head;
     }
   }
@@ -137,7 +128,6 @@ void delete_list(Node ** head) {
     free(current -> data);
     free(current);
   }
-
 }
 
 void quit_command(FILE * outputFile, Node * head) {
@@ -250,13 +240,71 @@ void go_to_line(Node * head, char * buffer) {
   Cursor.pozitie = 0;
 }
 
-int list_length(Node* head) {
+int list_length(Node * head) {
   int nr = 0;
-  while(head) {
-    head = head->next;
+  while (head) {
+    head = head -> next;
     nr++;
   }
   return nr;
+}
+
+Node * undo_command(Node * head) {
+  int i;
+  if (!is_empty(undo_stack)) {
+    char * redo;
+    if (strncmp(top(undo_stack), "Ndel", 4) == 0) {
+      redo = (char * ) calloc(5, sizeof(char));
+      strcpy(redo, "text\0");
+      char * n;
+      char * nodes = top(undo_stack);
+      strtok(nodes, " ");
+      n = strtok(NULL, " ");
+      while (n != NULL) {
+        Node * tmp = head;
+        for (i = 1; i <= list_length(head); i++) {
+          if (i == atoi(n)) {
+            redo = (char * ) realloc(redo, (strlen(redo) + strlen(n) + strlen(tmp -> data) + 3));
+            strcat(redo, " ");
+            strcat(redo, n);
+            strcat(redo, " ");
+            strcat(redo, tmp -> data);
+            head = list_remove(head, tmp);
+            break;
+          }
+          tmp = tmp -> next;
+        }
+
+        n = strtok(NULL, " ");
+      }
+
+    }
+    redo_stack = push(redo_stack, redo);
+    undo_stack = pop(undo_stack);
+    free(redo);
+  }
+  return head;
+}
+
+Node * redo_command(Node * head) {
+  if (!is_empty(redo_stack)) {
+    if (strncmp(top(redo_stack), "text", 4) == 0) {
+      char * nr_nod;
+      char * text;
+      char * redo = top(redo_stack);
+      strtok(redo, " ");
+      nr_nod = strtok(NULL, " ");
+      text = strtok(NULL, " ");
+      while (nr_nod != NULL) {
+        head = introduce_nod(head, atoi(nr_nod), text);
+        nr_nod = strtok(NULL, " ");
+        text = strtok(NULL, " ");
+      }
+
+    }
+    redo_stack = pop(redo_stack);
+  }
+  return head;
 }
 
 int main() {
@@ -266,7 +314,7 @@ int main() {
 
   int command_enabled = 0;
   char * buffer = (char * ) calloc(BUF_MAX, sizeof(char));
-  char * nod_dels = (char *)calloc(7, sizeof(char));
+  char * nod_dels = (char * ) calloc(7, sizeof(char));
   char nod[4];
   strcpy(nod_dels, "Ndel 1\0");
   Cursor.linie = 1;
@@ -284,74 +332,16 @@ int main() {
   while (fgets(buffer, BUF_MAX, entryFile) != NULL) {
     if (command_enabled) {
       if (strcmp(buffer, "::i\n") == 0 || strcmp(buffer, "::i \n") == 0) {
-        nod_dels = (char *) realloc(nod_dels, 5 * sizeof(char));
+        nod_dels = (char * ) realloc(nod_dels, 5 * sizeof(char));
         strcpy(nod_dels, "Ndel\0");
         Cursor.linie = list_length(head);
         command_enabled = 0;
       } else if (strcmp(buffer, "q\n") == 0) {
         quit_command(outputFile, saved_head);
       } else if (strcmp(buffer, "r\n") == 0) {
-        if (!is_empty(redo_stack)) {
-          if(strncmp(top(redo_stack), "text", 4) == 0) {
-            printf("--------------");
-            char* nr_nod;
-            char* text;
-            char* redo = top(redo_stack);
-            printf("%s\n", strtok(redo, " "));
-            nr_nod = strtok(NULL, " ");
-            printf("%s\n", nr_nod);
-            text = strtok(NULL, " ");
-            printf("%s\n", text);
-            while (nr_nod != NULL)
-            {
-              head = introduce_nod(head, atoi(nr_nod), text);
-              nr_nod = strtok(NULL, " ");
-              text = strtok(NULL, " ");
-            }
-            
-          }
-          redo_stack = pop(redo_stack);
-        }
-        printf("Redo\n");
+        head = redo_command(head);
       } else if (strcmp(buffer, "u\n") == 0) {
-        if (!is_empty(undo_stack))
-        {
-          char* redo;
-          if(strncmp(top(undo_stack), "Ndel", 4) == 0) {
-            redo = (char *)calloc(5, sizeof(char));
-            strcpy(redo, "text\0");
-            printf("Am ajuns aici si e bine\n");
-            char* n;
-            char* nodes = top(undo_stack);
-            printf("%s\n", nodes);
-            printf("%s\n", strtok(nodes, " "));
-            n = strtok(NULL, " ");
-            printf("%s\n", n);
-            while (n != NULL) {
-              printf("%s\n", n);
-              Node* tmp = head;
-              for (int i = 1; i <= list_length(head); i++){
-                if(i == atoi(n)) {
-                  redo = (char *)realloc(redo, (strlen(redo) + strlen(n) + strlen(tmp->data) + 3));
-                  strcat(redo, " ");
-                  strcat(redo, n);
-                  strcat(redo, " ");
-                  strcat(redo, tmp->data);
-                  head = list_remove(head, tmp);
-                  break;
-                }
-                tmp = tmp->next;
-              }
-
-              n = strtok(NULL, " ");
-            }
-
-          }
-        redo_stack = push(redo_stack, redo);
-        undo_stack = pop(undo_stack);
-        free(redo);
-        }
-        printf("Undo\n");
+        head = undo_command(head);
       } else if (strcmp(buffer, "s\n") == 0) {
         saved_head = save_command(head, saved_head);
       } else if (strncmp(buffer, "dl", 2) == 0) {
@@ -368,9 +358,7 @@ int main() {
         }
       } else if (strcmp(buffer, "b\n") == 0) {
         head = backspace_command(head);
-      } else {
-        //printf("Unhandled case\n");
-      }
+      } 
     } else if (!command_enabled) {
       if (strcmp(buffer, "::i\n") == 0 || strcmp(buffer, "::i \n") == 0) {
         command_enabled = 1;
@@ -380,18 +368,15 @@ int main() {
         Cursor.linie++;
         Cursor.pozitie = 0;
         sprintf(nod, " %d", Cursor.linie);
-        nod_dels = (char*)realloc(nod_dels, (strlen(nod_dels) + strlen(nod) + 1) * sizeof (char));
+        nod_dels = (char * ) realloc(nod_dels, (strlen(nod_dels) + strlen(nod) + 1) * sizeof(char));
         strcat(nod_dels, nod);
       }
     }
   }
-  print_stack(undo_stack);
-  print_stack(redo_stack);
-  // printf("%s", top(undo_stack));
   delete_list( & saved_head);
   delete_list( & head);
-  delete_stack(& undo_stack);
-  delete_stack(& redo_stack);
+  delete_stack( & undo_stack);
+  delete_stack( & redo_stack);
   free(buffer);
   free(nod_dels);
   fclose(entryFile);

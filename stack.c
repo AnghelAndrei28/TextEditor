@@ -35,6 +35,8 @@ SNode* pop(SNode *head) {
 	if (is_empty(head))
 		return NULL;
 	else if (is_empty(head->next)) {
+		free(head->comanda);
+		free(head);
 		return NULL;
 	} else {
 		SNode* to_be_removed = head;
