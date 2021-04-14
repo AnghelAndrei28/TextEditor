@@ -1,5 +1,5 @@
 build:
-	gcc -Wall -g Tema1.c stack.c stack.h -o editor
+	gcc -Wall -g -std=c99 Tema1.c stack.c stack.h list.h list.c -o editor
 
 run:
 	./editor < editor.in
